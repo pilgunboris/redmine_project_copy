@@ -1,0 +1,764 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE sqlMap
+    PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN"
+    "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="RedmineSQL">
+
+<!-- table Enumerations -->
+
+    <typeAlias alias="ParamHelper" type="db_controls.ParamHelper" />
+
+    <typeAlias alias="RedmineEnum" type="table_beans.RedmineEnum" />
+    <typeAlias alias="Version" type="table_beans.Version" />
+    <typeAlias alias="IssueCategory" type="table_beans.IssueCategory" />
+    <typeAlias alias="Milestone" type="table_beans.Milestone" />
+    <typeAlias alias="TimeEstimate" type="table_beans.TimeEstimate" />
+    <typeAlias alias="UserStory" type="table_beans.UserStory" />
+    <typeAlias alias="Issue" type="table_beans.Issue" />
+    <typeAlias alias="Journal" type="table_beans.Journal" />
+    <typeAlias alias="JournalDetail" type="table_beans.JournalDetail" />
+    <typeAlias alias="Board" type="table_beans.Board" />
+    <typeAlias alias="Message" type="table_beans.Message" />
+    <typeAlias alias="Watcher" type="table_beans.Watcher" />
+    <typeAlias alias="EnabledModule" type="table_beans.EnabledModule" />
+    <typeAlias alias="ProjectTracker" type="table_beans.ProjectTracker" />
+    <typeAlias alias="Document" type="table_beans.Document" />
+    <typeAlias alias="Attachment" type="table_beans.Attachment" />
+    <typeAlias alias="TimeEntry" type="table_beans.TimeEntry" />
+    <typeAlias alias="Query" type="table_beans.Query" />
+    <typeAlias alias="UserPref" type="table_beans.UserPref" />
+    <typeAlias alias="IssueRelation" type="table_beans.IssueRelation" />
+    <typeAlias alias="Question" type="table_beans.Question" />
+    <typeAlias alias="Repository" type="table_beans.Repository" />
+    <typeAlias alias="Changeset" type="table_beans.Changeset" />
+    <typeAlias alias="Change" type="table_beans.Change" />
+    <typeAlias alias="ChangesetsIssue" type="table_beans.ChangesetsIssue" />
+    <typeAlias alias="Token" type="table_beans.Token" />
+
+
+
+
+    <select id="LastInsertId" parameterClass="ParamHelper" resultClass="int">
+        SELECT MAX(t.id) FROM $db$.$type$ t
+    </select>
+
+
+	<!-- Запрос для получения объекта по идентификатору ID -->
+    <select id="GetEnum" parameterClass="ParamHelper"
+		resultClass="RedmineEnum">
+		SELECT *
+                FROM $db$.enumerations t
+                WHERE t.id = #id#
+    </select>
+
+    <!-- mapper for RedmineEnum -->
+    <resultMap id="enumResult" class="RedmineEnum">
+        <result property="id" column="id" />
+        <result property="name" column="name" />
+        <result property="position" column="position" />
+        <result property="is_default" column="is_default" />
+        <result property="type" column="type" />
+        <result property="active" column="active" />
+        <result property="project_id" column="project_id" />
+        <result property="parent_id" column="parent_id" />
+    </resultMap>
+
+    <!-- Запрос для получения всех дефолтных объектов где parent == NULL -->
+    <select id="DefaultEnums" parameterClass="ParamHelper"
+            resultMap="enumResult">
+           SELECT *
+           FROM $db$.enumerations t
+           WHERE t.type=#type# AND t.parent_id IS NULL AND t.project_id IS NULL
+    </select>
+    
+
+    <insert id="InsertEnum" parameterClass="RedmineEnum">
+        INSERT INTO $t_db$.enumerations(
+        name, position, is_default, type, active, project_id, parent_id
+        )
+        VALUES(
+        #name#, (SELECT MAX(t.position) FROM $t_db$.enumerations t WHERE type=#type#) + 1, #is_default#, #type#, #active#, #project_id#, #parent_id#
+        )
+    </insert>
+
+<!-- table versions -->
+
+    <resultMap id="versionResult" class="Version">
+        <result property="id" column="id" />
+        <result property="project_id" column="project_id" />
+        <result property="name" column="name" />
+        <result property="description" column="description" />
+        <result property="effective_date" column="effective_date" />
+        <result property="created_on" column="created_on" />
+        <result property="updated_on" column="updated_on" />
+        <result property="wiki_page_title" column="wiki_page_title" />
+        <result property="status" column="status" />
+        <result property="sharing" column="sharing" />
+        <result property="duration" column="duration" />
+
+    </resultMap>
+
+    <select id="GetVersionsForProject" parameterClass="ParamHelper" resultMap="versionResult">
+        SELECT * FROM $db$.versions WHERE project_id = #id#
+    </select>
+
+    <insert id="insertVersion" parameterClass="Version">
+        INSERT INTO $t_db$.versions(
+        project_id, name, description, effective_date, created_on, updated_on,
+        wiki_page_title, status, sharing, duration
+        )
+        VALUES(
+        #project_id#, #name#, #description#, #effective_date#, #created_on#, #updated_on#,
+        #wiki_page_title#, #status#, #sharing#, #duration#
+        )
+    </insert>
+
+<!-- table issue_categories -->
+    <resultMap id="categoryResult" class="IssueCategory">
+        <result property="id" column="id" />
+        <result property="project_id" column="project_id" />
+        <result property="name" column="name" />
+        <result property="assigned_to_id" column="assigned_to_id" />
+    </resultMap>
+
+    <select id="GetCategoriesForProject" parameterClass="ParamHelper" resultMap="categoryResult">
+        SELECT * FROM $db$.issue_categories WHERE project_id = #id#
+    </select>
+
+    <insert id="insertCategory" parameterClass="IssueCategory">
+        INSERT INTO $t_db$.issue_categories(
+        project_id, name, assigned_to_id
+        )
+        VALUES(
+        #project_id#, #name#, #assigned_to_id#
+        )
+    </insert>
+
+<!-- table Milestone  -->
+
+    <resultMap id="milestoneResult" class="Milestone">
+        <result property="id" column="id" />
+        <result property="target" column="target" />
+        <result property="deadline" column="deadline" />
+        <result property="project_id" column="project_id" />
+    </resultMap>
+
+    <select id="GetMilestoneForProject" parameterClass="ParamHelper" resultMap="milestoneResult">
+        SELECT * FROM $db$.milestones WHERE project_id = #id#
+    </select>
+
+    <insert id="insertMilestone" parameterClass="Milestone">
+        INSERT INTO $t_db$.milestones (
+        target, deadline, project_id
+        )
+        VALUES(
+        #target#, #deadline#, #project_id#
+        )
+    </insert>
+
+<!-- table time_estimates -->
+
+    <resultMap id="timeEstimatesResult" class="TimeEstimate">
+        <result property="id" column="id" />
+        <result property="estimation" column="estimation" />
+        <result property="value" column="value" />
+        <result property="created_at" column="created_at" />
+        <result property="updated_at" column="updated_at" />
+    </resultMap>
+
+    <select id="GetTimeEstimateForProject" parameterClass="ParamHelper" resultMap="timeEstimatesResult">
+        SELECT * FROM $db$.time_estimates
+    </select>
+
+    <insert id="insertTimeEstimate" parameterClass="TimeEstimate">
+        INSERT INTO $t_db$.time_estimates (
+        estimation, value, created_at, updated_at
+        )
+        VALUES(
+        #estimation#, #value#, #created_at#, #updated_at#
+        )
+    </insert>
+
+<!-- table user_stories   scrum plugin data -->
+
+    <resultMap id="userStoriesResult" class="UserStory">
+        <result property="id" column="id" />
+        <result property="name" column="name" />
+        <result property="project_id" column="project_id" />
+        <result property="time_estimate_id" column="time_estimate_id" />
+        <result property="created_at" column="created_at" />
+        <result property="updated_at" column="updated_at" />
+        <result property="priority" column="priority" />
+        <result property="us_number" column="us_number" />
+        <result property="milestone_id" column="milestone_id" />
+        <result property="version_id" column="version_id" />
+    </resultMap>
+
+    <select id="GetUserStoriesForProject" parameterClass="ParamHelper" resultMap="userStoriesResult">
+        SELECT * FROM $db$.user_stories WHERE project_id = #id#
+    </select>
+
+    <insert id="insertUserStory" parameterClass="UserStory">
+        INSERT INTO $t_db$.user_stories (
+        name, description, project_id, time_estimate_id, created_at, updated_at,
+        priority, us_number, milestone_id, version_id
+        )
+        VALUES(
+        #name#, #description#, #project_id#, #time_estimate_id#, #created_at#, #updated_at#,
+        #priority#, #us_number#, #milestone_id#, #version_id#
+        )
+    </insert>
+
+<!-- свершилось  table Issues -->
+
+    <resultMap id="issueResult" class="Issue">
+        <result property="id" column="id" />
+        <result property="tracker_id" column="tracker_id" />
+        <result property="project_id" column="project_id" />
+        <result property="subject" column="subject" />
+        <result property="description" column="description" />
+        <result property="due_date" column="due_date" />
+        <result property="category_id" column="category_id" />
+        <result property="status_id" column="status_id" />
+        <result property="assigned_to_id" column="assigned_to_id" />
+        <result property="priority_id" column="priority_id" />
+        <result property="fixed_version_id" column="fixed_version_id" />
+        <result property="author_id" column="author_id" />
+        <result property="lock_version" column="lock_version" />
+        <result property="created_on" column="created_on" />
+        <result property="updated_on" column="updated_on" />
+        <result property="start_date" column="start_date" />
+        <result property="done_ratio" column="done_ratio" />
+        <result property="estimated_hours" column="estimated_hours" />
+        <result property="estimated_hours" column="estimated_hours" />
+        <result property="user_story_id" column="user_story_id" />
+        <!--<result property="redirect_to" column="redirect_to" />-->
+        <result property="parent_id" column="parent_id" />
+        <result property="root_id" column="root_id" />
+        <result property="lft" column="lft" />
+        <result property="rgt" column="rgt" />
+    </resultMap>
+
+    <select id="GetIssuesForProject" parameterClass="ParamHelper" resultMap="issueResult">
+        SELECT * FROM $db$.issues WHERE project_id = #id# ORDER BY id
+    </select>
+
+    <insert id="insertIssue" parameterClass="Issue">
+        INSERT INTO $t_db$.issues (
+        tracker_id, project_id, subject, description, due_date, category_id,
+        status_id, assigned_to_id, priority_id, fixed_version_id, author_id,
+        lock_version, created_on, updated_on, start_date, done_ratio,
+        estimated_hours, user_story_id, redirect_to, parent_id, root_id,
+        lft, rgt
+        )
+        VALUES(
+        #tracker_id#, #project_id#, #subject#, #description#, #due_date#, #category_id#,
+        #status_id#, #assigned_to_id#, #priority_id#, #fixed_version_id#, #author_id#,
+        #lock_version#, #created_on#, #updated_on#, #start_date#, #done_ratio#,
+        #estimated_hours#, #user_story_id#, #redirect_to#, #parent_id#, #root_id#,
+        #lft#, #rgt#
+        )
+    </insert>
+
+
+            <!-- update issue root id after insert every issue except situation when root != -1 -->
+    <update id="updateIssue" parameterClass="ParamHelper">
+        UPDATE $db$.issues t
+        SET t.root_id=#id#
+        WHERE id=#id#
+    </update>
+
+<!-- table Journals -->
+
+    <resultMap id="journalsResult" class="Journal">
+        <result property="id" column="id" />
+        <result property="journalized_id" column="journalized_id" />
+        <result property="journalized_type" column="journalized_type" />
+        <result property="user_id" column="user_id" />
+        <result property="notes" column="notes" />
+        <result property="created_on" column="created_on" />
+    </resultMap>
+
+    <select id="GetJournalsForEntity" parameterClass="ParamHelper" resultMap="journalsResult">
+        SELECT * FROM $db$.journals WHERE journalized_id = #id#
+    </select>
+
+    <insert id="insertJournal" parameterClass="Journal">
+        INSERT INTO $t_db$.journals (
+        journalized_id, journalized_type, user_id, notes, created_on
+        )
+        VALUES(
+        #journalized_id#, #journalized_type#, #user_id#, #notes#, #created_on#
+        )
+    </insert>
+
+<!-- table Journal_details -->
+
+    <resultMap id="journalDetailsResult" class="JournalDetail">
+        <result property="id" column="id" />
+        <result property="journal_id" column="journal_id" />
+        <result property="property" column="property" />
+        <result property="prop_key" column="prop_key" />
+        <result property="old_value" column="old_value" />
+        <result property="value" column="value" />
+    </resultMap>
+
+    <select id="GetJournalDetailsForEntity" parameterClass="ParamHelper" resultMap="journalDetailsResult">
+        SELECT * FROM $db$.journal_details WHERE journal_id = #id#
+    </select>
+
+    <insert id="insertJournalDetail" parameterClass="JournalDetail">
+        INSERT INTO $t_db$.journal_details (
+        journal_id, property, prop_key, old_value, value
+        )
+        VALUES(
+        #journal_id#, #property#, #prop_key#, #old_value#, #value#
+        )
+    </insert>
+
+
+<!-- table Boards -->
+
+    <resultMap id="boardsResult" class="Board">
+        <result property="id" column="id" />
+        <result property="project_id" column="project_id" />
+        <result property="name" column="name" />
+        <result property="description" column="description" />
+        <result property="position" column="position" />
+        <result property="topics_count" column="topics_count" />
+        <result property="messages_count" column="messages_count" />
+    </resultMap>
+
+    <select id="GetBoardsForProject" parameterClass="ParamHelper" resultMap="boardsResult">
+        SELECT * FROM $db$.boards WHERE project_id = #id#
+    </select>
+
+    <insert id="insertBoard" parameterClass="Board">
+        INSERT INTO $t_db$.boards (
+        project_id, name, description, position, topics_count, messages_count
+        )
+        VALUES(
+        #project_id#, #name#, #description#, #position#, #topics_count#, #messages_count#
+        )
+    </insert>
+
+
+<!-- table Messages -->
+
+    <resultMap id="messageResult" class="Message">
+        <result property="id" column="id" />
+        <result property="board_id" column="board_id" />
+        <result property="parent_id" column="parent_id" />
+        <result property="subject" column="subject" />
+        <result property="content" column="content" />
+        <result property="author_id" column="author_id" />
+        <result property="replies_count" column="replies_count" />
+        <result property="last_reply_id" column="last_reply_id" />
+        <result property="created_on" column="created_on" />
+        <result property="updated_on" column="updated_on" />
+    </resultMap>
+
+    <select id="GetMessagesForProject" parameterClass="ParamHelper" resultMap="messageResult">
+        SELECT * FROM $db$.messages WHERE board_id = #id#
+    </select>
+
+    <insert id="insertMessage" parameterClass="Message">
+        INSERT INTO $t_db$.messages(
+        board_id, parent_id, subject, content, author_id, replies_count, last_reply_id,
+        created_on, updated_on
+        )
+        VALUES(
+        #board_id#, #parent_id#, #subject#, #content#, #author_id#, #replies_count#,
+        #last_reply_id#, #created_on#, #updated_on#
+        )
+    </insert>
+
+        <!-- update parent_id and last_reply_id after moving messages -->
+    <update id="updateMessage" parameterClass="ParamHelper">
+        UPDATE $db$.messages t
+        SET
+        t.parent_id=#parent_id#,
+        t.last_reply_id=#last_reply_id#
+        WHERE id=#id#
+    </update>
+
+<!-- table Messages -->
+
+    <resultMap id="watcherResult" class="Watcher">
+        <result property="id" column="id" />
+        <result property="watchable_type" column="watchable_type" />
+        <result property="watchable_id" column="watchable_id" />
+        <result property="user_id" column="user_id" />
+    </resultMap>
+
+    <select id="GetWatcherForEntity" parameterClass="ParamHelper" resultMap="watcherResult">
+        SELECT * FROM $db$.watchers WHERE watchable_id = #id# AND watchable_type=#type#
+    </select>
+
+    <insert id="insertWatcher" parameterClass="Watcher">
+        INSERT INTO $t_db$.watchers(
+        watchable_type, watchable_id, user_id
+        )
+        VALUES(
+        #watchable_type#, #watchable_id#, #user_id#
+        )
+    </insert>
+
+<!-- table enabled_modules -->
+
+    <resultMap id="enabledModuleResult" class="EnabledModule">
+        <result property="id" column="id" />
+        <result property="project_id" column="project_id" />
+        <result property="name" column="name" />
+    </resultMap>
+
+    <select id="GetEnabledModulesForProject" parameterClass="ParamHelper" resultMap="enabledModuleResult">
+        SELECT * FROM $db$.enabled_modules WHERE project_id = #id#
+    </select>
+
+    <insert id="insertEnabledModule" parameterClass="EnabledModule">
+        INSERT INTO $t_db$.enabled_modules(
+        project_id, name
+        )
+        VALUES(
+        #project_id#, #name#
+        )
+    </insert>
+
+
+<!-- table enabled_modules -->
+
+    <resultMap id="projectTrackerResult" class="ProjectTracker">
+        <result property="project_id" column="project_id" />
+        <result property="tracker_id" column="tracker_id" />
+    </resultMap>
+
+    <select id="GetProjectTrackersForProject" parameterClass="ParamHelper" resultMap="projectTrackerResult">
+        SELECT * FROM $db$.projects_trackers WHERE project_id = #id#
+    </select>
+
+    <insert id="insertProjectTracker" parameterClass="ProjectTracker">
+        INSERT INTO $t_db$.projects_trackers(
+        project_id, tracker_id
+        )
+        VALUES(
+        #project_id#, #tracker_id#
+        )
+    </insert>
+
+<!-- table documents -->
+
+    <resultMap id="documentsResult" class="Document">
+        <result property="id" column="id" />
+        <result property="project_id" column="project_id" />
+        <result property="category_id" column="category_id" />
+        <result property="title" column="title" />
+        <result property="description" column="description" />
+        <result property="created_on" column="created_on" />
+    </resultMap>
+
+    <select id="GetDocumentsForProject" parameterClass="ParamHelper" resultMap="documentsResult">
+        SELECT * FROM $db$.documents WHERE project_id = #id#
+    </select>
+
+    <insert id="insertDocument" parameterClass="Document">
+        INSERT INTO $t_db$.documents(
+        project_id, category_id, title, description, created_on
+        )
+        VALUES(
+        #project_id#, #category_id#, #title#, #description#, #created_on#
+        )
+    </insert>
+
+<!-- table attachments -->
+
+    <resultMap id="attachmentsResult" class="Attachment">
+        <result property="id" column="id" />
+        <result property="container_id" column="container_id" />
+        <result property="container_type" column="container_type" />
+        <result property="filename" column="filename" />
+        <result property="disk_filename" column="disk_filename" />
+        <result property="filesize" column="filesize" />
+        <result property="content_type" column="content_type" />
+        <result property="digest" column="digest" />
+        <result property="downloads" column="downloads" />
+        <result property="author_id" column="author_id" />
+        <result property="created_on" column="created_on" />
+        <result property="description" column="description" />
+    </resultMap>
+
+    <select id="GetAttachmentForProject" parameterClass="ParamHelper" resultMap="attachmentsResult">
+        SELECT * FROM $db$.attachments WHERE container_id = #id# AND container_type = #type#
+    </select>
+
+    <insert id="insertAttachment" parameterClass="Attachment">
+        INSERT INTO $t_db$.attachments(
+        container_id, container_type, filename, disk_filename, filesize, content_type,
+        digest, downloads, author_id, created_on, description
+        )
+        VALUES(
+        #container_id#, #container_type#, #filename#, #disk_filename#, #filesize#, #content_type#,
+        #digest#, #downloads#, #author_id#, #created_on#, #description#
+        )
+    </insert>
+
+<!-- table time_entries-->
+
+    <resultMap id="timeEntryResult" class="TimeEntry">
+        <result property="id" column="id" />
+        <result property="project_id" column="project_id" />
+        <result property="user_id" column="user_id" />
+        <result property="issue_id" column="issue_id" />
+        <result property="hours" column="hours" />
+        <result property="comments" column="comments" />
+        <result property="activity_id" column="activity_id" />
+        <result property="spent_on" column="spent_on" />
+        <result property="tyear" column="tyear" />
+        <result property="tmonth" column="tmonth" />
+        <result property="tweek" column="tweek" />
+        <result property="created_on" column="created_on" />
+        <result property="updated_on" column="updated_on" />
+    </resultMap>
+
+    <select id="GetTimeEntriesForProject" parameterClass="ParamHelper" resultMap="timeEntryResult">
+        SELECT * FROM $db$.time_entries WHERE project_id=#id#
+    </select>
+
+    <insert id="insertTimeEntry" parameterClass="TimeEntry">
+        INSERT INTO $t_db$.time_entries(
+        project_id, user_id, issue_id, hours, comments, activity_id, spent_on,
+        tyear, tmonth, tweek, created_on, updated_on
+        )
+        VALUES(
+        #project_id#, #user_id#, #issue_id#, #hours#, #comments#, #activity_id#, #spent_on#,
+        #tyear#, #tmonth#, #tweek#, #created_on#, #updated_on#
+        )
+    </insert>
+
+
+<!-- table queries -->
+
+    <resultMap id="queriesResult" class="Query">
+        <result property="id" column="id" />
+        <result property="project_id" column="project_id" />
+        <result property="name" column="name" />
+        <result property="filters" column="filters" />
+        <result property="user_id" column="user_id" />
+        <result property="is_public" column="is_public" />
+        <result property="column_names" column="column_names" />
+        <result property="sort_criteria" column="sort_criteria" />
+        <result property="group_by" column="group_by" />
+    </resultMap>
+
+    <select id="GetQueriesForProject" parameterClass="ParamHelper" resultMap="queriesResult">
+        SELECT * FROM $db$.queries WHERE project_id=#id#
+    </select>
+
+    <insert id="insertQuery" parameterClass="Query">
+        INSERT INTO $t_db$.queries(
+        project_id, name, filters, user_id, is_public, column_names, sort_criteria, group_by
+        )
+        VALUES(
+        #project_id#, #name#, #filters#, #user_id#, #is_public#, #column_names#, #sort_criteria#, #group_by#
+        )
+    </insert>
+
+<!-- table UserPref-->
+
+    <resultMap id="userPrefResult" class="UserPref">
+        <result property="id" column="id" />
+        <result property="user_id" column="user_id" />
+        <result property="others" column="others" />
+        <result property="hide_mail" column="hide_mail" />
+        <result property="time_zone" column="time_zone" />
+    </resultMap>
+
+    <select id="GetUserPrefForProject" parameterClass="ParamHelper" resultMap="userPrefResult">
+        SELECT * FROM $db$.user_preferences WHERE user_id=#id#
+    </select>
+
+    <insert id="insertUserPref" parameterClass="UserPref">
+        INSERT INTO $t_db$.user_preferences(
+        user_id, others, hide_mail, time_zone
+        )
+        VALUES(
+        #user_id#, #others#, #hide_mail#, #time_zone#
+        )
+    </insert>
+
+
+<!-- table issueRelation-->
+
+    <resultMap id="issueRelationResult" class="IssueRelation">
+        <result property="id" column="id" />
+        <result property="issue_from_id" column="issue_from_id" />
+        <result property="issue_to_id" column="issue_to_id" />
+        <result property="relation_type" column="relation_type" />
+        <result property="delay" column="delay" />
+    </resultMap>
+
+    <select id="GetIssueRelations" parameterClass="ParamHelper" resultMap="issueRelationResult">
+        SELECT * FROM $db$.issue_relations
+    </select>
+
+    <insert id="insertIssueRelation" parameterClass="IssueRelation">
+        INSERT INTO $t_db$.issue_relations(
+        issue_from_id, issue_to_id, relation_type, delay
+        )
+        VALUES(
+        #issue_from_id#, #issue_to_id#, #relation_type#, #delay#
+        )
+    </insert>
+
+<!-- table questions-->
+
+    <resultMap id="questionsResult" class="Question">
+        <result property="id" column="id" />
+        <result property="journal_id" column="journal_id" />
+        <result property="author_id" column="author_id" />
+        <result property="assigned_to_id" column="assigned_to_id" />
+        <result property="opened" column="opened" />
+        <result property="issue_id" column="issue_id" />
+    </resultMap>
+
+    <select id="GetQuestionForIssue" parameterClass="ParamHelper" resultMap="questionsResult">
+        SELECT * FROM $db$.questions WHERE issue_id=#id#
+    </select>
+
+    <insert id="insertQuestion" parameterClass="Question">
+        INSERT INTO $t_db$.questions(
+        journal_id, author_id, assigned_to_id, opened, issue_id
+        )
+        VALUES(
+        #journal_id#, #author_id#, #assigned_to_id#, #opened#, #issue_id#
+        )
+    </insert>
+
+
+<!-- table questions-->
+
+    <resultMap id="repositoryResult" class="Repository">
+        <result property="id" column="id" />
+        <result property="project_id" column="project_id" />
+        <result property="url" column="url" />
+        <result property="login" column="login" />
+        <result property="password" column="password" />
+        <result property="root_url" column="root_url" />
+        <result property="type" column="type" />
+    </resultMap>
+
+    <select id="GetRepositoriesForIssue" parameterClass="ParamHelper" resultMap="repositoryResult">
+        SELECT * FROM $db$.repositories WHERE project_id=#id#
+    </select>
+
+    <insert id="insertRepository" parameterClass="Repository">
+        INSERT INTO $t_db$.repositories(
+        project_id, url, login, password, root_url, type
+        )
+        VALUES(
+        #project_id#, #url#, #login#, #password#, #root_url#, #type#
+        )
+    </insert>
+
+<!-- table changesets -->
+
+    <resultMap id="changesetsResult" class="Changeset">
+        <result property="id" column="id" />
+        <result property="repository_id" column="repository_id" />
+        <result property="revision" column="revision" />
+        <result property="committer" column="committer" />
+        <result property="committed_on" column="committed_on" />
+        <result property="comments" column="comments" />
+        <result property="commit_date" column="commit_date" />
+        <result property="scmid" column="scmid" />
+        <result property="user_id" column="user_id" />
+    </resultMap>
+
+    <select id="GetChangesets" parameterClass="ParamHelper" resultMap="changesetsResult">
+        SELECT * FROM $db$.changesets WHERE repository_id=#id#
+    </select>
+
+    <insert id="insertChangeset" parameterClass="Changeset">
+        INSERT INTO $t_db$.changesets(
+        repository_id, revision, committer, committed_on, comments, commit_date,
+        scmid, user_id
+        )
+        VALUES(
+        #repository_id#, #revision#, #committer#, #committed_on#, #comments#, #commit_date#,
+        #scmid#, #user_id#
+        )
+    </insert>
+
+<!-- table changes -->
+
+    <resultMap id="changesResult" class="Change">
+        <result property="id" column="id" />
+        <result property="changeset_id" column="changeset_id" />
+        <result property="action" column="action" />
+        <result property="path" column="path" />
+        <result property="from_path" column="from_path" />
+        <result property="from_revision" column="from_revision" />
+        <result property="revision" column="revision" />
+        <result property="branch" column="branch" />
+    </resultMap>
+
+    <select id="GetChanges" parameterClass="ParamHelper" resultMap="changesResult">
+        SELECT * FROM $db$.changes WHERE changeset_id=#id#
+    </select>
+
+    <insert id="insertChange" parameterClass="Change">
+        INSERT INTO $t_db$.changes(
+        changeset_id, action, path, from_path, from_revision, revision, branch
+        )
+        VALUES(
+        #changeset_id#, #action#, #path#, #from_path#, #from_revision#, #revision#, #branch#
+        )
+    </insert>
+
+<!-- table ChangesetsIssue -->
+
+    <resultMap id="changesetsIssuesResult" class="ChangesetsIssue">
+        <result property="changeset_id" column="changeset_id" />
+        <result property="issue_id" column="issue_id" />
+    </resultMap>
+
+    <select id="GetChangesetsIssues" parameterClass="ParamHelper" resultMap="changesetsIssuesResult">
+        SELECT * FROM $db$.changesets_issues WHERE changeset_id=#id#
+    </select>
+
+    <insert id="insertChangesetsIssue" parameterClass="ChangesetsIssue">
+        INSERT INTO $t_db$.changesets_issues(
+        changeset_id, issue_id
+        )
+        VALUES(
+        #changeset_id#, #issue_id#
+        )
+    </insert>
+
+<!-- table Tokens -->
+
+    <resultMap id="tokensResult" class="Token">
+        <result property="id" column="id" />
+        <result property="user_id" column="user_id" />
+        <result property="action" column="action" />
+        <result property="value" column="value" />
+        <result property="created_on" column="created_on" />
+    </resultMap>
+
+    <select id="GetTokens" parameterClass="ParamHelper" resultMap="tokensResult">
+        SELECT * FROM $db$.tokens WHERE user_id=#id#
+    </select>
+
+    <insert id="insertToken" parameterClass="Token">
+        INSERT INTO $t_db$.tokens(
+        user_id, action, value, created_on
+        )
+        VALUES(
+        #user_id#, #action#, #value#, #created_on#
+        )
+    </insert>
+
+
+</sqlMap>

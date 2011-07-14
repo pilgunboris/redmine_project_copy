@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE sqlMapConfig
+    PUBLIC "-//ibatis.apache.org//DTD SQL Map Config 2.0//EN"
+    "http://ibatis.apache.org/dtd/sql-map-config-2.dtd">
+
+<sqlMapConfig>
+
+  <transactionManager type="JDBC" commitRequired="false">
+    <dataSource type="SIMPLE">
+      <property name="JDBC.Driver" value="com.mysql.jdbc.Driver"/>
+      <property name="JDBC.ConnectionURL" value="jdbc:mysql://apache:3306/mysql?useUnicode=true&amp;characterEncoding=utf8&amp;characterSetResults=utf8"/>
+      <property name="JDBC.Username" value="username"/>
+      <property name="JDBC.Password" value="password"/>
+      <property name="Pool.MaximumActiveConnections" value="20"/>
+      <property name="Pool.MaximumIdleConnections" value="5"/>
+      <property name="Pool.MaximumWait" value="60000"/>
+      
+    <!--  <property name="validationQuery" value="select * from users"/> -->
+    </dataSource>
+  </transactionManager>
+
+  <sqlMap resource="enumeration.xml"/>
+
+</sqlMapConfig>
